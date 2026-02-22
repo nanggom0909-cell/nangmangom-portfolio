@@ -33,13 +33,9 @@ export default function MediaCard({ item, onClick }: MediaCardProps) {
                 />
 
                 {/* Video Badge */}
-                {isVideo ? (
+                {isVideo && (
                     <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-md p-2 rounded-full text-white z-10 transition-opacity group-hover:opacity-0 delay-100">
                         <Play size={16} fill="white" />
-                    </div>
-                ) : (
-                    <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-md p-2 text-white z-10 transition-opacity group-hover:opacity-0 delay-100 rounded-lg">
-                        <Images size={16} />
                     </div>
                 )}
 
