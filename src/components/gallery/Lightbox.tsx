@@ -76,7 +76,7 @@ export default function Lightbox({ item, onClose, onNext, onPrev }: LightboxProp
             {onPrev && (
                 <button
                     onClick={(e) => { e.stopPropagation(); onPrev(); }}
-                    className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 p-2 rounded-full bg-surface/30 text-foreground hover:bg-surface/80 transition-colors z-10 pointer-events-auto"
+                    className="hidden md:block absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 p-2 rounded-full bg-surface/30 text-foreground hover:bg-surface/80 transition-colors z-10 pointer-events-auto"
                 >
                     <ChevronLeft size={32} />
                 </button>
@@ -84,7 +84,7 @@ export default function Lightbox({ item, onClose, onNext, onPrev }: LightboxProp
             {onNext && (
                 <button
                     onClick={(e) => { e.stopPropagation(); onNext(); }}
-                    className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 p-2 rounded-full bg-surface/30 text-foreground hover:bg-surface/80 transition-colors z-10 pointer-events-auto"
+                    className="hidden md:block absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 p-2 rounded-full bg-surface/30 text-foreground hover:bg-surface/80 transition-colors z-10 pointer-events-auto"
                 >
                     <ChevronRight size={32} />
                 </button>
