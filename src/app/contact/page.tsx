@@ -13,7 +13,7 @@ export default function ContactPage() {
 
                     <h1 className="text-2xl font-bold text-foreground mb-2">Get in Touch</h1>
                     <p className="text-center text-sm text-foreground-secondary mb-8">
-                        프로젝트 문의나 궁금한 점이 있으시다면 언제든 연락주세요.
+                        문의 사항은 언제든 연락주세요.
                     </p>
 
                     <div className="flex flex-col gap-4 w-full">
