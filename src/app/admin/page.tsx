@@ -1,32 +1,53 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Image as ImageIcon } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Plus, Image as ImageIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { MediaItem } from "@/types/media";
 import MediaListRow from "@/components/admin/MediaListRow";
 import DeleteConfirmDialog from "@/components/admin/DeleteConfirmDialog";
 import UploadDrawer from "@/components/admin/UploadDrawer";
-
-// Mock Data
-const INITIAL_MOCK_ITEMS: MediaItem[] = [
-    { id: "1", title: "Neon City", type: "Photo", url: "", created_at: "2026-02-22" },
-    { id: "2", title: "Ocean Waves", type: "Video", url: "", created_at: "2026-02-21" },
-    { id: "3", title: "Mountain Peak", type: "Photo", url: "", created_at: "2026-02-20" },
-];
+import { createClient } from "@/utils/supabase/client";
 
 export default function AdminPage() {
-    const [items, setItems] = useState<MediaItem[]>(INITIAL_MOCK_ITEMS);
+    const [items, setItems] = useState<MediaItem[]>([]);
     const [isUploadDrawerOpen, setIsUploadDrawerOpen] = useState(false);
+    const [isLoadingInitial, setIsLoadingInitial] = useState(true);
 
     // Delete Modal State
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-    const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+    const [itemToDelete, setItemToDelete] = useState<MediaItem | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    const supabase = createClient();
+
+    const fetchMedia = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from("media")
+                .select("*")
+                .order("created_at", { ascending: false });
+
+            if (error) throw error;
+            setItems(data || []);
+        } catch (err) {
+            toast.error("데이터를 불러오는데 실패했습니다.");
+            console.error(err);
+        } finally {
+            setIsLoadingInitial(false);
+        }
+    }, [supabase]);
+
+    useEffect(() => {
+        fetchMedia();
+    }, [fetchMedia]);
+
     const handleDeleteRequest = (id: string) => {
-        setItemToDelete(id);
-        setDeleteModalOpen(true);
+        const item = items.find(i => i.id === id);
+        if (item) {
+            setItemToDelete(item);
+            setDeleteModalOpen(true);
+        }
     };
 
     const handleConfirmDelete = async () => {
@@ -34,10 +55,25 @@ export default function AdminPage() {
         setIsDeleting(true);
 
         try {
-            // Mock API call
-            await new Promise(resolve => setTimeout(resolve, 800));
+            // Extract the Storage file path from the URL to delete from bucket
+            const urlParts = itemToDelete.url.split('portfolio-media/');
+            if (urlParts.length > 1) {
+                const filePath = urlParts[1].split('?')[0]; // Remove query params if any
+                const { error: storageError } = await supabase.storage
+                    .from('portfolio-media')
+                    .remove([filePath]);
+                if (storageError) console.error("Storage delete error:", storageError);
+            }
 
-            setItems(prev => prev.filter(item => item.id !== itemToDelete));
+            // Delete from Database
+            const { error: dbError } = await supabase
+                .from('media')
+                .delete()
+                .eq('id', itemToDelete.id);
+
+            if (dbError) throw dbError;
+
+            setItems(prev => prev.filter(item => item.id !== itemToDelete.id));
             toast.success("미디어가 성공적으로 삭제되었습니다.");
         } catch {
             toast.error("삭제 중 오류가 발생했습니다.");
@@ -65,7 +101,11 @@ export default function AdminPage() {
                 </button>
             </div>
 
-            {items.length === 0 ? (
+            {isLoadingInitial ? (
+                <div className="w-full flex justify-center py-20 text-foreground-secondary">
+                    <Loader2 className="animate-spin w-8 h-8" />
+                </div>
+            ) : items.length === 0 ? (
                 <div className="w-full flex flex-col items-center justify-center py-24 text-center border border-dashed border-neutral-800 rounded-2xl bg-surface/50">
                     <ImageIcon className="w-12 h-12 text-neutral-600 mb-4" />
                     <h3 className="text-lg font-medium text-foreground">아직 업로드된 폴트폴리오가 없습니다</h3>
@@ -98,8 +138,7 @@ export default function AdminPage() {
                 onClose={() => setIsUploadDrawerOpen(false)}
                 onSuccess={() => {
                     setIsUploadDrawerOpen(false);
-                    // In real app, we re-fetch data. Here we mock it.
-                    toast.info("갤러리가 새로고침 되었습니다.");
+                    fetchMedia();
                 }}
             />
         </div>

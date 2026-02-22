@@ -5,6 +5,7 @@ import { UploadCloud, File, AlertCircle, X, Loader2 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { MediaType } from "@/types/media";
+import { createClient } from "@/utils/supabase/client";
 
 interface UploadDrawerProps {
     isOpen: boolean;
@@ -58,8 +59,38 @@ export default function UploadDrawer({ isOpen, onClose, onSuccess }: UploadDrawe
         setIsUploading(true);
 
         try {
-            // Mock Supabase Upload logic
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            const supabase = createClient();
+
+            // 1. Upload file to Storage Bucket
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const filePath = `${type}/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('portfolio-media')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            // 2. Get Public URL
+            const { data: publicUrlData } = supabase.storage
+                .from('portfolio-media')
+                .getPublicUrl(filePath);
+
+            const fileUrl = publicUrlData.publicUrl;
+
+            // 3. Insert Database Record
+            const { error: insertError } = await supabase
+                .from('media')
+                .insert({
+                    title: title,
+                    description: description,
+                    type: type,
+                    url: fileUrl,
+                    thumbnail_url: fileUrl, // use original file as thumb for simplicity
+                });
+
+            if (insertError) throw insertError;
 
             toast.success("업로드가 완료되었습니다!");
 
@@ -72,7 +103,7 @@ export default function UploadDrawer({ isOpen, onClose, onSuccess }: UploadDrawe
             setIsUploading(false);
             onSuccess();
         } catch {
-            toast.error("업로드 중 오류가 발생했습니다.");
+            toast.error("업로드 중 오류가 발생했습니다. Storage 권한을 확인해주세요.");
             setIsUploading(false);
         }
     };

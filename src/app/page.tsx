@@ -6,24 +6,37 @@ import CategoryFilter from "@/components/gallery/CategoryFilter";
 import MasonryGrid from "@/components/gallery/MasonryGrid";
 import Lightbox from "@/components/gallery/Lightbox";
 import { MediaItem } from "@/types/media";
-
-// Mock data for initial UI dev
-const MOCK_ITEMS: MediaItem[] = [
-  { id: "1", title: "Neon City", type: "Photo", url: "", created_at: "2026-02-22", description: "Cyberpunk street vibes" },
-  { id: "2", title: "Ocean Waves", type: "Video", url: "", created_at: "2026-02-21" },
-  { id: "3", title: "Mountain Peak", type: "Landscape", url: "", created_at: "2026-02-20" },
-  { id: "4", title: "Cafe Aesthetic", type: "Snap", url: "", created_at: "2026-02-19" },
-  { id: "5", title: "Drone Flight", type: "Video", url: "", created_at: "2026-02-18", description: "Aerial view of the forest" },
-  { id: "6", title: "Portrait Shift", type: "Portrait", url: "", created_at: "2026-02-17" },
-];
+import { createClient } from "@/utils/supabase/client";
+import { useEffect } from "react";
 
 const CATEGORIES = ["All", "Photo", "Portrait", "Landscape", "Snap", "Video"];
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState("All");
-  const [items] = useState<MediaItem[]>(MOCK_ITEMS);
-  const [isLoading] = useState(false); // Set to true to test skeleton
+  const [items, setItems] = useState<MediaItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
+
+  useEffect(() => {
+    const fetchMedia = async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("media")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setItems(data || []);
+      } catch (err) {
+        console.error("Error fetching media:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMedia();
+  }, []);
 
   const filteredItems = useMemo(() => {
     if (activeCategory === "All") return items;
