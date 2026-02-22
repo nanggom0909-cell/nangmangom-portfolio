@@ -12,6 +12,7 @@ import { createClient } from "@/utils/supabase/client";
 export default function AdminPage() {
     const [items, setItems] = useState<MediaItem[]>([]);
     const [isUploadDrawerOpen, setIsUploadDrawerOpen] = useState(false);
+    const [itemToEdit, setItemToEdit] = useState<MediaItem | null>(null);
     const [isLoadingInitial, setIsLoadingInitial] = useState(true);
 
     // Delete Modal State
@@ -41,6 +42,11 @@ export default function AdminPage() {
     useEffect(() => {
         fetchMedia();
     }, [fetchMedia]);
+
+    const handleEditRequest = (item: MediaItem) => {
+        setItemToEdit(item);
+        setIsUploadDrawerOpen(true);
+    };
 
     const handleDeleteRequest = (id: string) => {
         const item = items.find(i => i.id === id);
@@ -120,7 +126,7 @@ export default function AdminPage() {
             ) : (
                 <div className="flex flex-col gap-3">
                     {items.map(item => (
-                        <MediaListRow key={item.id} item={item} onDeleteRequest={handleDeleteRequest} />
+                        <MediaListRow key={item.id} item={item} onEditRequest={handleEditRequest} onDeleteRequest={handleDeleteRequest} />
                     ))}
                 </div>
             )}
@@ -135,9 +141,14 @@ export default function AdminPage() {
 
             <UploadDrawer
                 isOpen={isUploadDrawerOpen}
-                onClose={() => setIsUploadDrawerOpen(false)}
+                initialData={itemToEdit}
+                onClose={() => {
+                    setIsUploadDrawerOpen(false);
+                    setItemToEdit(null);
+                }}
                 onSuccess={() => {
                     setIsUploadDrawerOpen(false);
+                    setItemToEdit(null);
                     fetchMedia();
                 }}
             />

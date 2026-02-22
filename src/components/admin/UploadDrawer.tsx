@@ -1,19 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UploadCloud, File, AlertCircle, X, Loader2 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
-import { MediaType } from "@/types/media";
+import { MediaType, MediaItem } from "@/types/media";
 import { createClient } from "@/utils/supabase/client";
 
 interface UploadDrawerProps {
     isOpen: boolean;
+    initialData?: MediaItem | null;
     onClose: () => void;
     onSuccess: () => void;
 }
 
-export default function UploadDrawer({ isOpen, onClose, onSuccess }: UploadDrawerProps) {
+export default function UploadDrawer({ isOpen, initialData, onClose, onSuccess }: UploadDrawerProps) {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [type, setType] = useState<MediaType>("Photo");
@@ -21,11 +22,30 @@ export default function UploadDrawer({ isOpen, onClose, onSuccess }: UploadDrawe
     const [isUploading, setIsUploading] = useState(false);
     const [errorText, setErrorText] = useState("");
 
+    const isEditMode = !!initialData;
+
+    useEffect(() => {
+        if (initialData && isOpen) {
+            setTitle(initialData.title);
+            setDescription(initialData.description || "");
+            setType(initialData.type);
+            setFile(null); // Keep null to signify no new file
+            setErrorText("");
+        } else if (isOpen && !initialData) {
+            setTitle("");
+            setDescription("");
+            setType("Photo");
+            setFile(null);
+            setErrorText("");
+        }
+    }, [initialData, isOpen]);
+
     const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
         accept: {
             'image/jpeg': [],
             'image/png': [],
             'video/mp4': [],
+            'video/quicktime': ['.mov'],
         },
         maxSize: 50 * 1024 * 1024, // 50MB
         maxFiles: 1,
@@ -43,7 +63,7 @@ export default function UploadDrawer({ isOpen, onClose, onSuccess }: UploadDrawe
                 setErrorText("파일 용량이 너무 큽니다. (최대 50MB)");
                 toast.error("50MB 이상의 파일은 업로드할 수 없습니다.");
             } else {
-                setErrorText("지원하지 않는 파일 형식입니다. (JPG, PNG, MP4 가능)");
+                setErrorText("지원하지 않는 파일 형식입니다. (JPG, PNG, MP4, MOV 가능)");
                 toast.error("지원하지 않는 파일 형식입니다.");
             }
         },
@@ -51,7 +71,7 @@ export default function UploadDrawer({ isOpen, onClose, onSuccess }: UploadDrawe
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!file) {
+        if (!file && !isEditMode) {
             toast.error("업로드할 파일을 선택해주세요.");
             return;
         }
@@ -61,38 +81,60 @@ export default function UploadDrawer({ isOpen, onClose, onSuccess }: UploadDrawe
         try {
             const supabase = createClient();
 
-            // 1. Upload file to Storage Bucket
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-            const filePath = `${type}/${fileName}`;
+            let fileUrl = initialData?.url || "";
+            let thumbUrl = initialData?.thumbnail_url || "";
 
-            const { error: uploadError } = await supabase.storage
-                .from('portfolio-media')
-                .upload(filePath, file);
+            if (file) {
+                // 1. Upload new file to Storage Bucket
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+                const filePath = `${type}/${fileName}`;
 
-            if (uploadError) throw uploadError;
+                const { error: uploadError } = await supabase.storage
+                    .from('portfolio-media')
+                    .upload(filePath, file);
 
-            // 2. Get Public URL
-            const { data: publicUrlData } = supabase.storage
-                .from('portfolio-media')
-                .getPublicUrl(filePath);
+                if (uploadError) throw uploadError;
 
-            const fileUrl = publicUrlData.publicUrl;
+                // 2. Get Public URL
+                const { data: publicUrlData } = supabase.storage
+                    .from('portfolio-media')
+                    .getPublicUrl(filePath);
 
-            // 3. Insert Database Record
-            const { error: insertError } = await supabase
-                .from('media')
-                .insert({
-                    title: title,
-                    description: description,
-                    type: type,
-                    url: fileUrl,
-                    thumbnail_url: fileUrl, // use original file as thumb for simplicity
-                });
+                fileUrl = publicUrlData.publicUrl;
+                thumbUrl = fileUrl; // use original file as thumb for simplicity
+            }
 
-            if (insertError) throw insertError;
+            if (isEditMode && initialData) {
+                // Update Database Record
+                const { error: updateError } = await supabase
+                    .from('media')
+                    .update({
+                        title: title,
+                        description: description,
+                        type: type,
+                        url: fileUrl,
+                        thumbnail_url: thumbUrl,
+                    })
+                    .eq('id', initialData.id);
 
-            toast.success("업로드가 완료되었습니다!");
+                if (updateError) throw updateError;
+                toast.success("미디어가 성공적으로 수정되었습니다!");
+            } else {
+                // Insert Database Record
+                const { error: insertError } = await supabase
+                    .from('media')
+                    .insert({
+                        title: title,
+                        description: description,
+                        type: type,
+                        url: fileUrl,
+                        thumbnail_url: thumbUrl,
+                    });
+
+                if (insertError) throw insertError;
+                toast.success("업로드가 완료되었습니다!");
+            }
 
             // Reset form
             setTitle("");
@@ -102,8 +144,10 @@ export default function UploadDrawer({ isOpen, onClose, onSuccess }: UploadDrawe
 
             setIsUploading(false);
             onSuccess();
-        } catch {
-            toast.error("업로드 중 오류가 발생했습니다. Storage 권한을 확인해주세요.");
+        } catch (error) {
+            console.error(error);
+            const errorMessage = error instanceof Error ? error.message : 'Storage 권한/주소를 확인해주세요.';
+            toast.error(`업로드 오류: ${errorMessage}`);
             setIsUploading(false);
         }
     };
@@ -119,7 +163,7 @@ export default function UploadDrawer({ isOpen, onClose, onSuccess }: UploadDrawe
 
             <div className="fixed top-0 right-0 h-full w-full sm:w-[500px] bg-surface z-50 shadow-2xl overflow-y-auto border-l border-neutral-800 flex flex-col transform transition-transform duration-300 ease-in-out translate-x-0">
                 <div className="flex items-center justify-between p-6 border-b border-neutral-800 sticky top-0 bg-surface/80 backdrop-blur z-10">
-                    <h2 className="text-xl font-bold text-foreground tracking-tight">새 미디어 업로드</h2>
+                    <h2 className="text-xl font-bold text-foreground tracking-tight">{isEditMode ? '미디어 수정' : '새 미디어 업로드'}</h2>
                     <button
                         onClick={onClose}
                         className="p-2 rounded-full hover:bg-neutral-800 text-foreground-secondary hover:text-foreground transition-colors"
@@ -147,11 +191,17 @@ export default function UploadDrawer({ isOpen, onClose, onSuccess }: UploadDrawe
                                     <p className="font-medium text-sm max-w-xs truncate">{file.name}</p>
                                     <p className="text-xs text-foreground-secondary mt-1">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
                                 </div>
+                            ) : isEditMode ? (
+                                <>
+                                    <UploadCloud size={36} className="mb-4 text-accent/50" />
+                                    <p className="font-medium text-sm mb-1">기존 파일이 유지됩니다.</p>
+                                    <p className="text-xs opacity-60">새 파일을 선택하면 기존 파일을 덮어씁니다.</p>
+                                </>
                             ) : (
                                 <>
                                     <UploadCloud size={36} className={`mb-4 ${errorText || isDragReject ? 'text-error' : 'text-neutral-500'}`} />
                                     <p className="font-medium text-sm mb-1">여기로 파일을 드래그하거나 클릭하여 선택하세요</p>
-                                    <p className="text-xs opacity-60">JPG, PNG, MP4 지원 (최대 50MB)</p>
+                                    <p className="text-xs opacity-60">JPG, PNG, MP4, MOV 지원 (최대 50MB)</p>
                                 </>
                             )}
                         </div>
@@ -207,16 +257,16 @@ export default function UploadDrawer({ isOpen, onClose, onSuccess }: UploadDrawe
                     <div className="mt-auto pt-6 pb-2">
                         <button
                             type="submit"
-                            disabled={isUploading || !file}
+                            disabled={isUploading || (!file && !isEditMode)}
                             className="w-full py-3.5 bg-foreground text-background font-bold rounded-lg hover:bg-neutral-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             {isUploading ? (
                                 <>
                                     <Loader2 className="animate-spin" size={18} />
-                                    업로드 중...
+                                    {isEditMode ? "수정 중..." : "업로드 중..."}
                                 </>
                             ) : (
-                                "미디어 업로드"
+                                isEditMode ? "수정 사항 저장" : "미디어 업로드"
                             )}
                         </button>
                     </div>

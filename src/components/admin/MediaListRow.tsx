@@ -1,15 +1,16 @@
 "use client";
 
 import { MediaItem } from "@/types/media";
-import { Trash2, Image as ImageIcon, Video, Calendar } from "lucide-react";
+import { Trash2, Image as ImageIcon, Video, Calendar, Edit } from "lucide-react";
 import Image from "next/image";
 
 interface MediaListRowProps {
     item: MediaItem;
+    onEditRequest: (item: MediaItem) => void;
     onDeleteRequest: (id: string) => void;
 }
 
-export default function MediaListRow({ item, onDeleteRequest }: MediaListRowProps) {
+export default function MediaListRow({ item, onEditRequest, onDeleteRequest }: MediaListRowProps) {
     const isVideo = item.type === "Video";
     // Fallback to picsum
     const srcUrl = item.thumbnail_url || item.url || `https://picsum.photos/seed/${item.id}/200/200`;
@@ -43,6 +44,13 @@ export default function MediaListRow({ item, onDeleteRequest }: MediaListRowProp
             </div>
 
             <div className="flex items-center gap-2">
+                <button
+                    onClick={() => onEditRequest(item)}
+                    className="p-2 text-foreground-secondary hover:text-accent hover:bg-accent/10 rounded-lg transition-all"
+                    title="수정"
+                >
+                    <Edit size={18} />
+                </button>
                 <button
                     onClick={() => onDeleteRequest(item.id)}
                     className="p-2 text-foreground-secondary hover:text-error hover:bg-red-500/10 rounded-lg transition-all"
