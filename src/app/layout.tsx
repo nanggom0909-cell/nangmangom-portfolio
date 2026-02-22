@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   description: "Photography and Video Portfolio of nangmangom",
 };
 
+import Footer from "@/components/ui/Footer";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -19,8 +21,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} antialiased bg-background text-foreground min-h-screen`}>
-        {children}
+      <body className={`${inter.variable} antialiased bg-background text-foreground min-h-screen flex flex-col`}>
+        <div className="flex-1">
+          {children}
+        </div>
+        <Footer />
       </body>
     </html>
   );
