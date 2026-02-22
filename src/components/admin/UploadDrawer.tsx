@@ -17,7 +17,7 @@ interface UploadDrawerProps {
 export default function UploadDrawer({ isOpen, initialData, onClose, onSuccess }: UploadDrawerProps) {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
-    const [type, setType] = useState<MediaType>("Photo");
+    const [type, setType] = useState<MediaType>("Portrait");
     const [file, setFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [errorText, setErrorText] = useState("");
@@ -34,7 +34,7 @@ export default function UploadDrawer({ isOpen, initialData, onClose, onSuccess }
         } else if (isOpen && !initialData) {
             setTitle("");
             setDescription("");
-            setType("Photo");
+            setType("Portrait");
             setFile(null);
             setErrorText("");
         }
@@ -54,7 +54,7 @@ export default function UploadDrawer({ isOpen, initialData, onClose, onSuccess }
             setErrorText("");
             // Auto-set type based on file
             if (files[0].type.startsWith("video/")) setType("Video");
-            else setType("Photo");
+            else setType("Portrait");
         },
         onDropRejected: (fileRejections) => {
             setFile(null);
@@ -234,7 +234,6 @@ export default function UploadDrawer({ isOpen, initialData, onClose, onSuccess }
                                 onChange={e => setType(e.target.value as MediaType)}
                                 className="w-full px-4 py-2.5 bg-background border border-neutral-800 rounded-lg text-foreground focus:ring-2 focus:ring-accent focus:border-transparent transition-all appearance-none"
                             >
-                                <option value="Photo">사진 (일반 Photo)</option>
                                 <option value="Portrait">사진 (인물 Portrait)</option>
                                 <option value="Landscape">사진 (풍경 Landscape)</option>
                                 <option value="Snap">사진 (스냅 Snap)</option>

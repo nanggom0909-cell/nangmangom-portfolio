@@ -1,5 +1,6 @@
-import { Mail, Instagram } from 'lucide-react';
+import { Mail, Instagram, ArrowLeft } from 'lucide-react';
 import Header from '@/components/ui/Header';
+import Link from 'next/link';
 
 export default function ContactPage() {
     return (
@@ -44,6 +45,14 @@ export default function ContactPage() {
                                 <span className="text-sm font-semibold text-foreground">@nangmangomtengi</span>
                             </div>
                         </a>
+
+                        <Link
+                            href="/"
+                            className="mt-2 flex items-center justify-center gap-2 w-full py-3.5 bg-surface text-foreground font-medium rounded-xl border border-neutral-800 hover:bg-neutral-800 hover:border-neutral-700 transition-all font-semibold"
+                        >
+                            <ArrowLeft size={18} />
+                            메인으로 돌아가기
+                        </Link>
                     </div>
                 </div>
             </main>

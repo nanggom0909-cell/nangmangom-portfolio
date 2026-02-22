@@ -9,7 +9,7 @@ import { MediaItem } from "@/types/media";
 import { createClient } from "@/utils/supabase/client";
 import { useEffect } from "react";
 
-const CATEGORIES = ["All", "Photo", "Portrait", "Landscape", "Snap", "Video"];
+const CATEGORIES = ["All", "Portrait", "Landscape", "Snap", "Video"];
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState("All");
@@ -40,9 +40,6 @@ export default function Home() {
 
   const filteredItems = useMemo(() => {
     if (activeCategory === "All") return items;
-    if (activeCategory === "Photo") {
-      return items.filter(item => ["Photo", "Portrait", "Landscape", "Snap"].includes(item.type));
-    }
     return items.filter(item => item.type === activeCategory);
   }, [items, activeCategory]);
 
