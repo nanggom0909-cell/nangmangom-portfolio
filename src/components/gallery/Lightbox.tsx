@@ -1,32 +1,98 @@
 "use client";
 
-import { X, Play } from "lucide-react";
+import { X, Play, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { MediaItem } from "@/types/media";
+import { useEffect, useState } from "react";
 
 interface LightboxProps {
     item: MediaItem | null;
     onClose: () => void;
+    onNext?: () => void;
+    onPrev?: () => void;
 }
 
-export default function Lightbox({ item, onClose }: LightboxProps) {
+export default function Lightbox({ item, onClose, onNext, onPrev }: LightboxProps) {
+    const [touchStart, setTouchStart] = useState<number | null>(null);
+    const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+    // 최소 마우스/터치 드래그 거리 (이상이면 스와이프 로 인식)
+    const minSwipeDistance = 50;
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!item) return;
+            if (e.key === 'ArrowRight' && onNext) onNext();
+            if (e.key === 'ArrowLeft' && onPrev) onPrev();
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [item, onNext, onPrev, onClose]);
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        setTouchEnd(null); // 터치 종료 지점 초기화
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        setTouchEnd(e.targetTouches[0].clientX);
+    };
+
+    const handleTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > minSwipeDistance;
+        const isRightSwipe = distance < -minSwipeDistance;
+
+        if (isLeftSwipe && onNext) {
+            onNext();
+        }
+        if (isRightSwipe && onPrev) {
+            onPrev();
+        }
+    };
+
     if (!item) return null;
 
     const isVideo = item.type === "Video";
     const srcUrl = item.url || item.thumbnail_url || `https://picsum.photos/seed/${item.id}/1200/1600`;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-md p-4 sm:p-8 animate-in fade-in duration-300">
+        <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-md p-4 sm:p-8 animate-in fade-in duration-300"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+        >
             <button
                 onClick={onClose}
-                className="absolute top-6 right-6 p-2 rounded-full bg-surface/50 text-foreground hover:bg-neutral-500/20 transition-colors z-10"
+                className="absolute top-6 right-6 p-2 rounded-full bg-surface/50 text-foreground hover:bg-neutral-500/20 transition-colors z-10 pointer-events-auto"
             >
                 <X size={24} />
             </button>
 
-            <div className="relative w-full max-w-5xl max-h-[90vh] flex flex-col items-center justify-center">
+            {onPrev && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onPrev(); }}
+                    className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 p-2 rounded-full bg-surface/30 text-foreground hover:bg-surface/80 transition-colors z-10 pointer-events-auto"
+                >
+                    <ChevronLeft size={32} />
+                </button>
+            )}
+            {onNext && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onNext(); }}
+                    className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 p-2 rounded-full bg-surface/30 text-foreground hover:bg-surface/80 transition-colors z-10 pointer-events-auto"
+                >
+                    <ChevronRight size={32} />
+                </button>
+            )}
+
+            <div className="relative w-full max-w-5xl max-h-[90vh] flex flex-col items-center justify-center pointer-events-none">
                 {/* Media Container */}
-                <div className="relative w-full h-full max-h-[80vh] flex items-center justify-center rounded-lg overflow-hidden shrink-0">
+                <div className="relative w-full h-full max-h-[80vh] flex items-center justify-center rounded-lg overflow-hidden shrink-0 pointer-events-auto">
                     {isVideo ? (
                         <div className="relative w-full aspect-video bg-surface rounded-lg flex items-center justify-center border border-neutral-800">
                             {/* Fallback mock for video since we might not have real URLs yet */}

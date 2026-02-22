@@ -43,6 +43,20 @@ export default function Home() {
     return items.filter(item => item.type === activeCategory);
   }, [items, activeCategory]);
 
+  const handleNavigate = (direction: 'next' | 'prev') => {
+    if (!selectedMedia) return;
+    const currentIndex = filteredItems.findIndex(item => item.id === selectedMedia.id);
+    if (currentIndex === -1) return;
+
+    if (direction === 'next') {
+      const nextIndex = (currentIndex + 1) % filteredItems.length;
+      setSelectedMedia(filteredItems[nextIndex]);
+    } else {
+      const prevIndex = (currentIndex - 1 + filteredItems.length) % filteredItems.length;
+      setSelectedMedia(filteredItems[prevIndex]);
+    }
+  };
+
   return (
     <>
       <Header />
@@ -55,7 +69,12 @@ export default function Home() {
         <MasonryGrid items={filteredItems} isLoading={isLoading} onMediaClick={setSelectedMedia} />
       </main>
 
-      <Lightbox item={selectedMedia} onClose={() => setSelectedMedia(null)} />
+      <Lightbox
+        item={selectedMedia}
+        onClose={() => setSelectedMedia(null)}
+        onNext={() => handleNavigate('next')}
+        onPrev={() => handleNavigate('prev')}
+      />
     </>
   );
 }
